@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaghaz MVP</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#faf7f2;--fg:#1f2430;--card:#fff;--mut:#667;--ac:#0f6e56;--bd:#e3ddd2;--red:#b3261e;--hl:#fff3b0}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181d;--fg:#ecebe6;--card:#1f2329;--mut:#9aa;--ac:#4fc3a1;--bd:#333a44;--red:#ff8a80;--hl:#5a4e00}}
+:root[data-theme="dark"]{--bg:#15181d;--fg:#ecebe6;--card:#1f2329;--mut:#9aa;--ac:#4fc3a1;--bd:#333a44;--red:#ff8a80;--hl:#5a4e00}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-family:Georgia,serif;margin:0;font-size:28px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:14px 0}
+button,input,textarea,select{font:inherit;color:inherit}
+button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer}
+button.g{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+input,textarea,select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px}
+textarea{min-height:200px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mut{color:var(--mut);font-size:14px}
+.flag{border-left:4px solid var(--red);padding:6px 12px;margin:10px 0;background:var(--bg);border-radius:0 8px 8px 0}
+.flag b{color:var(--red)}
+.cite{color:var(--ac);cursor:pointer;text-decoration:underline;font-size:13px}
+.src{max-height:300px;overflow:auto;white-space:pre-wrap;font-size:14px}
+.s.on{background:var(--hl)}
+.pill{display:inline-block;background:var(--bg);border:1px solid var(--bd);border-radius:99px;padding:2px 10px;margin:3px 4px 3px 0;font-size:14px}
+[dir=rtl]{font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq",serif;line-height:2}
+.hide{display:none}
+</style></head><body><div class="w">
+
+<div id="login" class="card" style="max-width:380px;margin:40px auto">
+<h1>Kaghaz · کاغذ</h1>
+<p class="mut">Understand official paperwork in plain language. MVP demo.</p>
+<p><label>Username<input id="u" value="demo"></label></p>
+<p><label>Password<input id="p" type="password" value="demo123"></label></p>
+<button onclick="login()">Sign in</button>
+<p class="mut">Demo credentials: <b>demo</b> / <b>demo123</b></p>
+<p id="err" class="mut" style="color:var(--red)"></p>
+</div>
+
+<div id="app" class="hide">
+<div class="row" style="justify-content:space-between"><h1>Kaghaz · کاغذ</h1>
+<div class="row"><select id="lang" onchange="L=this.value;if(last)render()" style="width:auto"><option value="en">English</option><option value="ur">اردو</option></select><button class="g" onclick="logout()">Sign out</button></div></div>
+<p class="mut">Paste a contract or notice, or load the sample. Runs fully in your browser; nothing is uploaded. MVP uses rule-based analysis; the production version adds OCR and a local LLM.</p>
+<div class="card">
+<textarea id="doc" placeholder="Paste document text here..."></textarea>
+<div class="row" style="margin-top:8px"><button onclick="analyze()">Explain this document</button><button class="g" onclick="sample()">Load sample rental contract</button><label class="g" style="border:1px solid var(--ac);border-radius:8px;padding:8px 12px;color:var(--ac);cursor:pointer">Upload .txt<input type="file" accept=".txt" class="hide" onchange="up(this)"></label></div>
+</div>
+<div id="out"></div>
+</div></div>
+
+<script>
+const T={en:{sum:"Summary",dl:"Deadlines, durations and amounts",rf:"Red flags",ck:"Next steps",src:"Source document (click a citation to highlight)",none:"None found.",speak:"Read aloud",dir:"ltr",
+ doc:(n,a,f)=>`This looks like a ${n}. It contains ${a} key dates, durations or amounts and ${f} clause(s) worth a closer look. Every point below links to the exact sentence it came from.`,
+ ck:["Read each red-flagged clause and ask for changes before signing.","Put every date and amount above in your calendar.","Ask for a written copy of anything agreed verbally.","If unsure, contact a legal-aid clinic or a lawyer. This tool explains; it does not give legal advice."],ckT:"Next steps"},
+ur:{sum:"خلاصہ",dl:"تاریخیں، مدتیں اور رقوم",rf:"خطرے کی نشانیاں",src:"اصل دستاویز (حوالے پر کلک کریں)",none:"کچھ نہیں ملا۔",speak:"سنیں",dir:"rtl",
+ doc:(n,a,f)=>`یہ ایک ${n==="rental agreement"?"کرایہ نامہ":"دستاویز"} لگتی ہے۔ اس میں ${a} اہم تاریخیں، مدتیں یا رقوم ہیں اور ${f} شق(یں) توجہ طلب ہیں۔ ہر نکتہ اصل جملے سے جڑا ہے۔`,
+ ck:["ہر نشان زدہ شق پڑھیں اور دستخط سے پہلے تبدیلی مانگیں۔","اوپر دی گئی تمام تاریخیں اور رقوم کیلنڈر میں لکھ لیں۔","زبانی طے شدہ ہر بات تحریری شکل میں لیں۔","شک ہو تو قانونی امداد کے مرکز یا وکیل سے رابطہ کریں۔ یہ ٹول صرف وضاحت کرتا ہے، قانونی مشورہ نہیں دیتا۔"],ckT:"اگلے اقدامات"}};
+const FL=[
+{re:/auto(matically)?[- ]?renew|renew(s|ed)? automatically/i,en:"Auto-renewal: the agreement continues by itself unless you cancel in time. Note the cancellation deadline.",ur:"خودکار تجدید: اگر آپ بروقت منسوخ نہ کریں تو معاہدہ خود بخود جاری رہے گا۔ منسوخی کی آخری تاریخ نوٹ کریں۔"},
+{re:/late fee|penalt|per day|liquidated damages/i,en:"Penalty or late fee: check how large it is and when it starts.",ur:"جرمانہ یا تاخیر کی فیس: رقم اور شروع ہونے کا وقت دیکھ لیں۔"},
+{re:/forfeit|non-?refundable|withh?old.*deposit/i,en:"Money you may not get back (deposit or fees). Ask exactly when it is refunded.",ur:"وہ رقم جو واپس نہ مل سکے (ضمانت یا فیس)۔ پوچھیں کہ واپسی کب ہوگی۔"},
+{re:/without (prior )?(written )?notice|at any time|sole discretion|unilateral/i,en:"One-sided power: the other party can act without notice or at their own discretion.",ur:"یکطرفہ اختیار: دوسرا فریق بغیر نوٹس یا اپنی مرضی سے کارروائی کر سکتا ہے۔"},
+{re:/increase|escalat/i,en:"Price increase clause: find out how much and how often.",ur:"قیمت میں اضافے کی شق: معلوم کریں کتنا اور کتنی بار۔"},
+{re:/waive|waiver|indemnif|hold harmless/i,en:"You may be giving up legal rights or taking on the other party's risk.",ur:"ممکن ہے آپ قانونی حقوق چھوڑ رہے ہوں یا دوسرے فریق کا خطرہ اپنے سر لے رہے ہوں۔"}];
+const MON="January|February|March|April|May|June|July|August|September|October|November|December";
+const RX=[["Amount",/(?:Rs\.?|PKR|USD|INR|₹|\$)\s?[\d,]+(?:\.\d+)?/gi],["Date",new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)?\\s(?:${MON})\\s\\d{4}\\b|\\b(?:${MON})\\s\\d{1,2},?\\s\\d{4}\\b|\\b\\d{4}-\\d{2}-\\d{2}\\b`,"gi")],["Duration",/\b\d+\s(?:days?|months?|years?|weeks?)\b/gi]];
+let L="en",last=null;
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function login(){if($("u").value==="demo"&&$("p").value==="demo123"){$("login").classList.add("hide");$("app").classList.remove("hide")}else $("err").textContent="Wrong credentials. Use demo / demo123."}
+function logout(){$("app").classList.add("hide");$("login").classList.remove("hide")}
+function up(i){const f=i.files[0];if(f){const r=new FileReader();r.onload=()=>{$("doc").value=r.result;analyze()};r.readAsText(f)}}
+function sample(){$("doc").value=`RESIDENTIAL RENTAL AGREEMENT. This rental agreement is made on 1 March 2026 between the Landlord and the Tenant. The monthly rent is Rs. 85,000, payable on or before the 5th of each month. The Tenant shall pay a security deposit of Rs. 170,000, which is non-refundable if the Tenant leaves before 12 months. A late fee of Rs. 2,000 per day applies to any rent paid after the due date. The lease term is 11 months and this agreement shall automatically renew for a further 11 months unless the Tenant gives written notice 60 days before expiry. The Landlord may increase the rent by 15% at each renewal. The Landlord may enter the premises at any time without prior notice. The Landlord may terminate this agreement at his sole discretion. The Tenant waives all claims against the Landlord for any damage or loss.`;analyze()}
+function analyze(){const t=$("doc").value.trim();if(!t)return;
+const ss=t.split(/(?<=[.!?])\s+/).filter(Boolean);
+const facts=[],flags=[];
+ss.forEach((s,i)=>{RX.forEach(([k,re])=>{(s.match(re)||[]).forEach(m=>facts.push({k,m,i}))});FL.forEach(f=>{if(f.re.test(s))flags.push({f,i})})});
+const type=/rent|lease|landlord|tenant/i.test(t)?"rental agreement":/loan|interest|borrower/i.test(t)?"loan agreement":/tax|assessment/i.test(t)?"tax notice":"document";
+last={ss,facts,flags,type};render()}
+function render(){const T_=T[L],{ss,facts,flags,type}=last;
+const c=i=>`<span class="cite" onclick="hl(${i})">[${L==="ur"?"جملہ":"sentence"} ${i+1}]</span>`;
+const sum=T_.doc(type,facts.length,flags.length);
+$("out").innerHTML=`<div dir="${T_.dir}">
+<div class="card"><h3>${T_.sum}</h3><p>${sum}</p><button class="g" onclick="say()">🔊 ${T_.speak}</button></div>
+<div class="card"><h3>${T_.dl}</h3>${facts.length?facts.map(x=>`<span class="pill"><b>${x.k}:</b> ${esc(x.m)} ${c(x.i)}</span>`).join(""):T_.none}</div>
+<div class="card"><h3>${T_.rf}</h3>${flags.length?flags.map(x=>`<div class="flag"><b>⚠</b> ${x.f[L]} ${c(x.i)}</div>`).join(""):T_.none}</div>
+<div class="card"><h3>${T_.ckT}</h3><ol>${T_.ck.map(x=>`<li>${x}</li>`).join("")}</ol></div>
+<div class="card"><h3>${T_.src}</h3><div class="src" dir="ltr">${ss.map((s,i)=>`<span class="s" id="s${i}">${esc(s)} </span>`).join("")}</div></div></div>`;
+window._sum=sum+" "+(flags.map(x=>x.f[L]).join(" "))}
+function hl(i){document.querySelectorAll(".s.on").forEach(e=>e.classList.remove("on"));const e=$("s"+i);e.classList.add("on");e.scrollIntoView({block:"center",behavior:"smooth"})}
+function say(){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(window._sum);u.lang=L==="ur"?"ur-PK":"en-US";speechSynthesis.speak(u)}catch(e){alert("Speech not supported in this browser.")}}
+</script></body></html>
